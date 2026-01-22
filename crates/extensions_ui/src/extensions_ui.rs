@@ -307,6 +307,7 @@ pub struct ExtensionsPage {
     provides_filter: Option<ExtensionProvides>,
     _subscriptions: [gpui::Subscription; 2],
     extension_fetch_task: Option<Task<()>>,
+    extension_fetch_generation: u64,
     upsells: BTreeSet<Feature>,
 }
 
@@ -366,6 +367,7 @@ impl ExtensionsPage {
                 query_contains_error: false,
                 provides_filter,
                 extension_fetch_task: None,
+                extension_fetch_generation: 0,
                 _subscriptions: subscriptions,
                 query_editor,
                 upsells: BTreeSet::default(),
@@ -484,6 +486,9 @@ impl ExtensionsPage {
         on_complete: Option<Box<dyn FnOnce(&mut Self, &mut Context<Self>) + Send>>,
         cx: &mut Context<Self>,
     ) {
+        self.extension_fetch_generation = self.extension_fetch_generation.wrapping_add(1);
+        let fetch_generation = self.extension_fetch_generation;
+
         self.is_fetching_extensions = true;
         self.fetch_failed = false;
         cx.notify();
@@ -543,6 +548,10 @@ impl ExtensionsPage {
             let fetch_result = remote_extensions.await;
 
             let result = this.update(cx, |this, cx| {
+                if this.extension_fetch_generation != fetch_generation {
+                    return Ok(());
+                }
+
                 cx.notify();
                 this.dev_extension_entries = dev_extensions;
                 this.is_fetching_extensions = false;

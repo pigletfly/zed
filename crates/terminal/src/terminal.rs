@@ -412,6 +412,7 @@ impl TerminalBuilder {
                 window_id,
             },
             child_exited: None,
+            exit_fallback_scheduled: false,
             event_loop_task: Task::ready(Ok(())),
             background_executor: background_executor.clone(),
             path_style,
@@ -643,6 +644,7 @@ impl TerminalBuilder {
                     window_id,
                 },
                 child_exited: None,
+                exit_fallback_scheduled: false,
                 event_loop_task: Task::ready(Ok(())),
                 background_executor,
                 path_style,
@@ -867,6 +869,7 @@ pub struct Terminal {
     template: CopyTemplate,
     activation_script: Vec<String>,
     child_exited: Option<ExitStatus>,
+    exit_fallback_scheduled: bool,
     event_loop_task: Task<Result<(), anyhow::Error>>,
     background_executor: BackgroundExecutor,
     path_style: PathStyle,
@@ -968,7 +971,28 @@ impl Terminal {
             AlacTermEvent::Bell => {
                 cx.emit(Event::Bell);
             }
-            AlacTermEvent::Exit => self.register_task_finished(Some(9), cx),
+            AlacTermEvent::Exit => {
+                // On some platforms (notably Linux/WSL), Alacritty's event loop may emit `Exit`
+                // without also emitting `ChildExit`. Give `ChildExit` a short grace period; if it
+                // doesn't arrive, treat the exit status as unknown so that Ctrl+D closes the
+                // terminal consistently across platforms.
+                if !self.exit_fallback_scheduled && self.child_exited.is_none() {
+                    self.exit_fallback_scheduled = true;
+                    let task = cx.spawn(async move |terminal, cx| {
+                        cx.background_executor()
+                            .timer(Duration::from_millis(200))
+                            .await;
+                        terminal.update(cx, |terminal, cx| {
+                            if terminal.child_exited.is_some() {
+                                return;
+                            }
+                            terminal.register_task_finished(None, cx);
+                        })?;
+                        anyhow::Ok(())
+                    });
+                    task.detach_and_log_err(cx);
+                }
+            }
             AlacTermEvent::MouseCursorDirty => {
                 //NOOP, Handled in render
             }
@@ -2629,6 +2653,53 @@ mod tests {
         });
 
         terminal
+    }
+
+    #[gpui::test(iterations = 10)]
+    async fn test_terminal_exit_without_child_exit_closes(cx: &mut TestAppContext) {
+        cx.executor().allow_parking();
+        cx.update(|cx| {
+            let settings_store = settings::SettingsStore::test(cx);
+            cx.set_global(settings_store);
+        });
+
+        let terminal = cx.new(|cx| {
+            TerminalBuilder::new_display_only(
+                CursorShape::default(),
+                AlternateScroll::On,
+                None,
+                0,
+                cx.background_executor(),
+                PathStyle::local(),
+            )
+            .unwrap()
+            .subscribe(cx)
+        });
+
+        let all_events: Arc<Mutex<Vec<Event>>> = Arc::new(Mutex::new(Vec::new()));
+        cx.update({
+            let all_events = all_events.clone();
+            |cx| {
+                cx.subscribe(&terminal, move |_, e, _| {
+                    all_events.lock().push(e.clone());
+                })
+            }
+        })
+        .detach();
+
+        terminal.update(cx, |terminal, cx| {
+            terminal.process_event(AlacTermEvent::Exit, cx);
+        });
+
+        cx.executor().timer(Duration::from_millis(500)).await;
+
+        assert!(
+            all_events
+                .lock()
+                .iter()
+                .any(|event| event == &Event::CloseTerminal),
+            "Exit without ChildExit should still close the terminal, but got events: {all_events:?}",
+        );
     }
 
     fn ctrl_mouse_down_at(

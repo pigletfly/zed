@@ -11,7 +11,7 @@ For operations that Zed doesn't support natively, you can use the integrated ter
 
 ## Git Panel
 
-The Git Panel gives you a birds-eye view of the state of your working tree and of Git's staging area.
+The Git Panel shows the state of your working tree and Git's staging area.
 
 You can open the Git Panel using {#action git_panel::ToggleFocus}, or by clicking the Git icon in the status bar.
 
@@ -69,6 +69,33 @@ To disable word diff for specific languages only, add this to your settings.json
   }
 }
 ```
+
+### Diff View Styles
+
+> **Changed in Preview (v0.225).** See [release notes](/releases#0.225).
+
+Zed displays diffs in two modes: **split** (side-by-side comparison) or **unified** (inline changes). Split view is the default.
+
+#### Changing the diff view
+
+Open the Settings Editor ({#kb zed::OpenSettings}) and search for "diff view style". Select either **Split** or **Unified**.
+
+To change the default, add this to your `settings.json`:
+
+```json
+{
+  "diff_view_style": "unified"
+}
+```
+
+See [Configuring Zed](./configuring-zed.md) for more about the Settings Editor.
+
+#### Split vs unified
+
+- **Split**: Shows the original and modified versions side by side. Useful for comparing file structure or reviewing large changes.
+- **Unified**: Shows changes inline with additions and deletions in a single view. Useful for focusing on specific line changes.
+
+You can switch between modes at any time. Your preference applies to [Project Diff](#project-diff), [File History](#file-history), and [Stash Diff View](#stash-diff-view). These diff views function as [multibuffers](./multibuffers.md), allowing you to edit multiple excerpts simultaneously.
 
 ## File History
 

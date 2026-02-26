@@ -135,6 +135,8 @@ messages!(
     (IncomingCall, Foreground),
     (InlayHints, Background),
     (InlayHintsResponse, Background),
+    (SemanticTokens, Background),
+    (SemanticTokensResponse, Background),
     (InstallExtension, Background),
     (InviteChannelMember, Foreground),
     (JoinChannel, Foreground),
@@ -199,7 +201,8 @@ messages!(
     (PrepareRename, Background),
     (PrepareRenameResponse, Background),
     (ProjectEntryResponse, Foreground),
-    (RefreshInlayHints, Foreground),
+    (RefreshInlayHints, Background),
+    (RefreshSemanticTokens, Background),
     (RegisterBufferWithLanguageServers, Background),
     (RejoinChannelBuffers, Foreground),
     (RejoinChannelBuffersResponse, Foreground),
@@ -226,6 +229,8 @@ messages!(
     (GetDocumentColorResponse, Background),
     (GetColorPresentation, Background),
     (GetColorPresentationResponse, Background),
+    (GetFoldingRanges, Background),
+    (GetFoldingRangesResponse, Background),
     (RefreshCodeLens, Background),
     (GetCodeLens, Background),
     (GetCodeLensResponse, Background),
@@ -354,6 +359,11 @@ messages!(
     (GetSharedAgentThreadResponse, Foreground),
     (FindSearchCandidatesChunk, Background),
     (FindSearchCandidatesCancelled, Background),
+    (SpawnKernel, Background),
+    (SpawnKernelResponse, Background),
+    (KillKernel, Background),
+    (GetRemoteProfilingData, Background),
+    (GetRemoteProfilingDataResponse, Background),
 );
 
 request_messages!(
@@ -404,6 +414,7 @@ request_messages!(
     (GetUsers, UsersResponse),
     (IncomingCall, Ack),
     (InlayHints, InlayHintsResponse),
+    (SemanticTokens, SemanticTokensResponse),
     (GetCodeLens, GetCodeLensResponse),
     (InviteChannelMember, Ack),
     (JoinChannel, JoinRoomResponse),
@@ -427,6 +438,7 @@ request_messages!(
     (Ping, Ack),
     (PrepareRename, PrepareRenameResponse),
     (RefreshInlayHints, Ack),
+    (RefreshSemanticTokens, Ack),
     (RefreshCodeLens, Ack),
     (RejoinChannelBuffers, RejoinChannelBuffersResponse),
     (RejoinRoom, RejoinRoomResponse),
@@ -445,6 +457,7 @@ request_messages!(
     ),
     (ResolveInlayHint, ResolveInlayHintResponse),
     (GetDocumentColor, GetDocumentColorResponse),
+    (GetFoldingRanges, GetFoldingRangesResponse),
     (GetColorPresentation, GetColorPresentationResponse),
     (RespondToChannelInvite, Ack),
     (RespondToContactRequest, Ack),
@@ -547,11 +560,16 @@ request_messages!(
     (TrustWorktrees, Ack),
     (RestrictWorktrees, Ack),
     (FindSearchCandidatesChunk, Ack),
+    (SpawnKernel, SpawnKernelResponse),
+    (KillKernel, Ack),
+    (GetRemoteProfilingData, GetRemoteProfilingDataResponse),
 );
 
 lsp_messages!(
     (GetReferences, GetReferencesResponse, true),
     (GetDocumentColor, GetDocumentColorResponse, true),
+    (GetFoldingRanges, GetFoldingRangesResponse, true),
+    (GetDocumentSymbols, GetDocumentSymbolsResponse, true),
     (GetHover, GetHoverResponse, true),
     (GetCodeActions, GetCodeActionsResponse, true),
     (GetSignatureHelp, GetSignatureHelpResponse, true),
@@ -562,6 +580,7 @@ lsp_messages!(
     (GetTypeDefinition, GetTypeDefinitionResponse, true),
     (GetImplementation, GetImplementationResponse, true),
     (InlayHints, InlayHintsResponse, false),
+    (SemanticTokens, SemanticTokensResponse, true)
 );
 
 entity_messages!(
@@ -584,6 +603,7 @@ entity_messages!(
     CreateImageForPeer,
     CreateProjectEntry,
     GetDocumentColor,
+    GetFoldingRanges,
     DeleteProjectEntry,
     ExpandProjectEntry,
     ExpandAllForProjectEntry,
@@ -606,8 +626,11 @@ entity_messages!(
     OpenUncommittedDiff,
     GetTypeDefinition,
     InlayHints,
+    SemanticTokens,
     JoinProject,
     LeaveProject,
+    SpawnKernel,
+    KillKernel,
     LinkedEditingRange,
     LoadCommitDiff,
     LspQuery,
@@ -624,6 +647,7 @@ entity_messages!(
     PerformRename,
     PrepareRename,
     RefreshInlayHints,
+    RefreshSemanticTokens,
     RefreshCodeLens,
     ReloadBuffers,
     RemoveProjectCollaborator,
@@ -727,7 +751,8 @@ entity_messages!(
     RestrictWorktrees,
     FindSearchCandidatesChunk,
     FindSearchCandidatesCancelled,
-    DownloadFileByPath
+    DownloadFileByPath,
+    GetRemoteProfilingData
 );
 
 entity_messages!(
@@ -912,7 +937,10 @@ impl LspQuery {
             Some(lsp_query::Request::GetImplementation(_)) => ("GetImplementation", false),
             Some(lsp_query::Request::GetReferences(_)) => ("GetReferences", false),
             Some(lsp_query::Request::GetDocumentColor(_)) => ("GetDocumentColor", false),
+            Some(lsp_query::Request::GetFoldingRanges(_)) => ("GetFoldingRanges", false),
+            Some(lsp_query::Request::GetDocumentSymbols(_)) => ("GetDocumentSymbols", false),
             Some(lsp_query::Request::InlayHints(_)) => ("InlayHints", false),
+            Some(lsp_query::Request::SemanticTokens(_)) => ("SemanticTokens", false),
             None => ("<unknown>", true),
         }
     }
